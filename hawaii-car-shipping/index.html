@@ -1337,6 +1337,12 @@ const a=JSON.parse(document.getElementById("wp-emoji-settings").textContent),o=(
 <style id="lp-custom-overrides">
 html{scroll-behavior:smooth;}
 #header,#header.f-nav{z-index:9999 !important;}
+@media(max-width:991px){
+.works-tab .elementor-tab-mobile-title{display:flex !important;align-items:center;text-align:left !important;padding:18px 20px !important;cursor:pointer;}
+.works-tab .elementor-tab-mobile-title span{font-size:1.7em !important;margin:0 14px 0 0 !important;display:inline-block !important;line-height:1;flex:none;}
+.works-tab .elementor-tab-mobile-title::after{content:"\f078";font-family:"Font Awesome 5 Free";font-weight:900;margin-left:auto;padding-left:14px;font-size:15px;flex:none;transition:transform .3s ease;}
+.works-tab .elementor-tab-mobile-title.elementor-active::after{transform:rotate(180deg);}
+}
 #quote,#reviews,#how-it-works,#faq,#contact{scroll-margin-top:90px;}
 @media(min-width:992px){.banner .banner-content .container .col-sm-7{flex:0 0 50%;max-width:50%;}}
 #footer img[src*="logo"]{max-width:170px !important;height:auto !important;}
@@ -1393,6 +1399,48 @@ html{scroll-behavior:smooth;}
   if(_tt){_tt.addEventListener('click',function(e){e.preventDefault();window.scrollTo({top:0,behavior:'smooth'});});
     var _toggle=function(){_tt.style.display=(window.pageYOffset>400)?'inline-block':'none';};
     _toggle();window.addEventListener('scroll',_toggle);}
+
+  // Mobile "How it works" accordion — Elementor's own mobile tab JS is broken here,
+  // so wire up an explicit tap-to-expand toggle for the works-tab section.
+  function initWorksAccordion(){
+    var section=document.querySelector('.works-tab');
+    if(!section||section.getAttribute('data-lp-acc'))return;
+    var titles=section.querySelectorAll('.elementor-tab-mobile-title');
+    if(!titles.length)return;
+    section.setAttribute('data-lp-acc','1');
+    var contentFor=function(tab){
+      return section.querySelector('.elementor-tab-content[data-tab="'+tab+'"]');
+    };
+    var mobile=window.matchMedia('(max-width:991px)').matches;
+    Array.prototype.forEach.call(titles,function(title,i){
+      var tab=title.getAttribute('data-tab');
+      var content=contentFor(tab);
+      // Collapsed starting state on mobile — every card closed, clearly tap-to-expand.
+      if(mobile){
+        title.classList.remove('elementor-active');
+        if(content){content.classList.remove('elementor-active');content.style.setProperty('display','none','important');}
+      }
+      title.addEventListener('click',function(e){
+        e.preventDefault();
+        var isOpen=title.classList.contains('elementor-active');
+        // Collapse everything first.
+        Array.prototype.forEach.call(titles,function(t){
+          t.classList.remove('elementor-active');
+          var c=contentFor(t.getAttribute('data-tab'));
+          if(c){c.classList.remove('elementor-active');c.style.setProperty('display','none','important');}
+        });
+        // Open the tapped one (unless it was already open — then leave collapsed).
+        if(!isOpen){
+          title.classList.add('elementor-active');
+          if(content){content.classList.add('elementor-active');content.style.setProperty('display','block','important');}
+        }
+      });
+    });
+  }
+  function bootWorks(){setTimeout(initWorksAccordion,300);setTimeout(initWorksAccordion,1200);}
+  if(document.readyState!=='loading')bootWorks();
+  else document.addEventListener('DOMContentLoaded',bootWorks);
+  window.addEventListener('load',bootWorks);
 
 })();
 </script>
