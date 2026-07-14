@@ -68,32 +68,6 @@ a { text-decoration: none; color: inherit; }
 
 .logo img { height: 46px; width: auto; }
 
-.main-nav ul {
-  list-style: none;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.main-nav a {
-  font-family: var(--head);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  font-size: 16px;
-  color: var(--navy);
-  transition: color 0.15s ease;
-}
-.main-nav a:hover { color: var(--red); }
-
-.nav-divider {
-  display: inline-block;
-  width: 2px;
-  height: 18px;
-  background: var(--cyan);
-  transform: skewX(-18deg);
-}
-
 .phone-btn {
   display: inline-flex;
   align-items: center;
