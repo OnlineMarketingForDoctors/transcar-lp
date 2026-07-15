@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Transcar">
+  <defs>
+    <linearGradient id="mark" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e12b28"/>
+      <stop offset="0.32" stop-color="#7fb0e0"/>
+      <stop offset="1" stop-color="#17357e"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="12" fill="#0b1f3f"/>
+  <!-- Stylized "7" mark -->
+  <path d="M15 15 H49 V24 H15 Z" fill="url(#mark)"/>
+  <path d="M37 24 H49 L35 49 H23 Z" fill="url(#mark)"/>
+</svg>
