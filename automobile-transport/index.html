@@ -358,7 +358,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 			<div class="elementor-widget-wrap elementor-element-populated">
 						<div class="elementor-element elementor-element-377341d elementor-widget elementor-widget-html" data-id="377341d" data-element_type="widget" data-e-type="widget" data-widget_type="html.default">
 				<div class="elementor-widget-container">
-					<iframe id="transcar-widget" src="https://api.transcar.com/widget/" style="width:100%; min-height:620px; border:none;"></iframe>
+					<div id="lp-quote-host"><div id="lp-quote-bar"><button type="button" id="lp-quote-close" class="lp-quote-close" aria-label="Close quote calculator">&times;</button></div><iframe id="transcar-widget" src="https://api.transcar.com/widget/" style="width:100%; min-height:620px; border:none;"></iframe>
 <script>window.addEventListener('message', function(e) {if (e.data && e.data.type === 'transcar-widget-resize') {document.getElementById('transcar-widget').style.height = e.data.height + 'px';}});</script>
 <script src="data:text/javascript;base64,CiAgd2luZG93LmFkZEV2ZW50TGlzdGVuZXIoJ21lc3NhZ2UnLCBmdW5jdGlvbihlKSB7CiAgICBpZiAoZS5kYXRhICYmIGUuZGF0YS50eXBlID09PSAndHJhbnNjYXItd2lkZ2V0LXJlc2l6ZScpIHsKICAgICAgZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ3RyYW5zY2FyLXdpZGdldCcpLnN0eWxlLmhlaWdodCA9IGUuZGF0YS5oZWlnaHQgKyAncHgnOwogICAgfQogIH0pOwogIA==" data-rocket-status="executed">
   window.addEventListener('message', function(e) {
@@ -366,7 +366,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       document.getElementById('transcar-widget').style.height = e.data.height + 'px';
     }
   });
-  </script>				</div>
+  </script></div>				</div>
 				</div>
 					</div>
 		</div>
@@ -1540,6 +1540,25 @@ html{scroll-behavior:smooth;}
    so recolor its diagonal top divider from white to that blue for a seamless transition. */
 .elementor-element-f2d1676 .elementor-shape-top .elementor-shape-fill{fill:#254675 !important;}
 .elementor-element-f2d1676 .elementor-shape-top svg{fill:#254675 !important;}
+/* --- Rate Quote Calculator modal: overlays the single existing #transcar-widget iframe
+   in place (never moved in the DOM, so it does not reload). Inline appearance is unchanged. --- */
+#lp-quote-bar{display:none;}
+#lp-quote-backdrop{position:fixed;inset:0;background:rgba(8,22,77,.72);z-index:100000;opacity:0;visibility:hidden;transition:opacity .2s ease;}
+body.lp-quote-open{overflow:hidden;}
+body.lp-quote-open #lp-quote-backdrop{opacity:1;visibility:visible;}
+body.lp-quote-open #lp-quote-host{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:100001;width:min(680px,94vw);max-height:92vh;overflow:auto;-webkit-overflow-scrolling:touch;background:#fff;border-radius:6px;box-shadow:0 20px 60px rgba(0,0,0,.45);}
+/* The quote-form column is position:absolute with a low z-index (set by an !important
+   rule we cannot out-specify in CSS), creating a stacking context that would trap the
+   modal below the body-level backdrop. The modal JS lifts that ancestor's z-index via an
+   inline !important style while open (which beats any stylesheet rule) and restores it on
+   close. Keep the panel itself interactive while its lifted ancestor is click-transparent. */
+body.lp-quote-open #lp-quote-host{pointer-events:auto;}
+body.lp-quote-open #lp-quote-bar{display:flex;justify-content:flex-end;align-items:center;position:sticky;top:0;background:#fff;padding:6px 8px;z-index:2;border-bottom:1px solid #eef1f5;}
+.lp-quote-close{width:40px;height:40px;border:none;background:transparent;color:#08164d;font-size:30px;line-height:1;cursor:pointer;border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:Arial,Helvetica,sans-serif;}
+.lp-quote-close:hover{background:#f0f2f6;color:#e01e26;}
+@media(max-width:600px){
+  body.lp-quote-open #lp-quote-host{width:100vw;height:100vh;height:100dvh;max-height:100dvh;border-radius:0;top:0;left:0;transform:none;}
+}
 </style>
 <script id="lp-custom-js">
 (function(){
@@ -1631,6 +1650,163 @@ html{scroll-behavior:smooth;}
   else document.addEventListener('DOMContentLoaded',bootWorks);
   window.addEventListener('load',bootWorks);
 
+})();
+</script>
+<script id="lp-quote-modal-js">
+(function(){
+  if(window.__lpQuoteInit) return; window.__lpQuoteInit=true;
+
+  var PAGE_SOURCE="us_automobile_transport";
+  var LANDING_PAGE="US Automobile Transport";
+  var WIDGET_ORIGIN="https://api.transcar.com";
+
+  // Capture the original attribution ONCE from the landing URL (non-PII only).
+  // Kept in memory for the page session and never overwritten by later interaction.
+  var attribution=(function(){
+    var out={}, keys=["utm_source","utm_medium","utm_campaign","utm_content","utm_term","gclid"];
+    try{
+      var qs=new URLSearchParams(window.location.search);
+      keys.forEach(function(k){var v=qs.get(k); if(v) out[k]=v;});
+    }catch(e){}
+    return out;
+  })();
+
+  window.dataLayer=window.dataLayer||[];
+  function push(evt,extra){
+    var data={event:evt,page_source:PAGE_SOURCE,landing_page:LANDING_PAGE,page_url:window.location.href};
+    var k; for(k in attribution){ if(attribution.hasOwnProperty(k)) data[k]=attribution[k]; }
+    if(extra){ for(k in extra){ if(extra.hasOwnProperty(k)) data[k]=extra[k]; } }
+    window.dataLayer.push(data);
+  }
+
+  var backdrop=null, isOpen=false, lastFocus=null, lifted=[];
+  function ensureBackdrop(){
+    if(backdrop) return backdrop;
+    backdrop=document.createElement('div');
+    backdrop.id='lp-quote-backdrop';
+    backdrop.addEventListener('click',closeModal);
+    document.body.appendChild(backdrop);
+    return backdrop;
+  }
+  // Positioned ancestors of the host create stacking contexts that would trap the modal
+  // below the body-level backdrop. Lift each above the backdrop via an inline !important
+  // z-index (beats any stylesheet rule) and make it click-transparent so backdrop clicks
+  // still close the modal. Originals are captured so close() restores them exactly.
+  function saveProp(rec,el,prop){ rec['_'+prop]={v:el.style.getPropertyValue(prop),p:el.style.getPropertyPriority(prop)}; }
+  function restoreProp(rec,prop){ var s=rec['_'+prop]; if(!s)return; if(s.v) rec.el.style.setProperty(prop,s.v,s.p); else rec.el.style.removeProperty(prop); }
+  function liftAncestors(host){
+    lifted=[];
+    var n=host.parentElement;
+    while(n && n.tagName!=='BODY' && n.tagName!=='HTML'){
+      var cs=getComputedStyle(n);
+      if(cs.position!=='static'){
+        var rec={el:n, overlays:[]};
+        // lift above the backdrop and make it click-transparent
+        saveProp(rec,n,'z-index'); saveProp(rec,n,'pointer-events');
+        n.style.setProperty('z-index','100001','important');
+        n.style.setProperty('pointer-events','none','important');
+        // hide this ancestor's own paint (its classic background box would otherwise
+        // show above the backdrop at its absolute position) — the modal panel is the
+        // only thing that should be visible.
+        saveProp(rec,n,'background-color'); saveProp(rec,n,'background-image'); saveProp(rec,n,'box-shadow');
+        n.style.setProperty('background-color','transparent','important');
+        n.style.setProperty('background-image','none','important');
+        n.style.setProperty('box-shadow','none','important');
+        Array.prototype.forEach.call(n.children,function(ch){
+          if(ch.classList && ch.classList.contains('elementor-background-overlay')){
+            rec.overlays.push({el:ch, v:ch.style.getPropertyValue('opacity'), p:ch.style.getPropertyPriority('opacity')});
+            ch.style.setProperty('opacity','0','important');
+          }
+        });
+        lifted.push(rec);
+      }
+      n=n.parentElement;
+    }
+  }
+  function restoreAncestors(){
+    lifted.forEach(function(r){
+      restoreProp(r,'z-index'); restoreProp(r,'pointer-events');
+      restoreProp(r,'background-color'); restoreProp(r,'background-image'); restoreProp(r,'box-shadow');
+      r.overlays.forEach(function(o){ if(o.v) o.el.style.setProperty('opacity',o.v,o.p); else o.el.style.removeProperty('opacity'); });
+    });
+    lifted=[];
+  }
+  function closeMobileMenu(){
+    var mc=document.querySelector('.menu-container.open'); if(mc) mc.classList.remove('open');
+    var mb=document.querySelector('.menu-backdrop.open'); if(mb) mb.classList.remove('open');
+  }
+  function openModal(location){
+    if(isOpen) return;                 // already open -> do not re-fire modal_open
+    var host=document.getElementById('lp-quote-host');
+    if(!host) return;
+    ensureBackdrop();
+    lastFocus=document.activeElement;
+    closeMobileMenu();
+    liftAncestors(host);
+    host.setAttribute('role','dialog');
+    host.setAttribute('aria-modal','true');
+    host.setAttribute('aria-label','Rate Quote Calculator');
+    document.body.classList.add('lp-quote-open');
+    isOpen=true;
+    var closeBtn=document.getElementById('lp-quote-close');
+    if(closeBtn){ try{closeBtn.focus();}catch(e){} }
+    push('transcar_quote_modal_open',{cta_location:location});
+  }
+  function closeModal(){
+    if(!isOpen) return;
+    document.body.classList.remove('lp-quote-open');
+    restoreAncestors();
+    var host=document.getElementById('lp-quote-host');
+    if(host){ host.removeAttribute('aria-modal'); }
+    isOpen=false;
+    if(lastFocus && lastFocus.focus){ try{lastFocus.focus();}catch(e){} }
+  }
+
+  function ctaHandler(location){
+    return function(e){
+      e.preventDefault();              // stay on the page, no #quote navigation
+      push('transcar_quote_cta_click',{cta_location:location});
+      openModal(location);
+    };
+  }
+
+  function wire(){
+    // Menu quote CTAs: every "Get a Quote" link in the header.
+    Array.prototype.forEach.call(document.querySelectorAll('#header a[href="#quote"]'),function(a){
+      if(a.getAttribute('data-lp-cta')) return; a.setAttribute('data-lp-cta','menu');
+      a.addEventListener('click',ctaHandler('menu'));
+    });
+    // Hero quote CTA: the button inside the .banner hero.
+    Array.prototype.forEach.call(document.querySelectorAll('.banner a[href="#quote"]'),function(a){
+      if(a.getAttribute('data-lp-cta')) return; a.setAttribute('data-lp-cta','hero');
+      a.addEventListener('click',ctaHandler('hero'));
+    });
+    var closeBtn=document.getElementById('lp-quote-close');
+    if(closeBtn && !closeBtn.getAttribute('data-lp-bound')){ closeBtn.setAttribute('data-lp-bound','1'); closeBtn.addEventListener('click',closeModal); }
+  }
+
+  document.addEventListener('keydown',function(e){ if(isOpen && (e.key==='Escape'||e.key==='Esc')) closeModal(); });
+
+  // Quote-submission tracking (best-effort, unverified). The calculator is a
+  // cross-origin iframe (api.transcar.com); the only message it is known to emit
+  // is 'transcar-widget-resize'. There is no confirmed success/redirect signal we
+  // can observe, so we do NOT fabricate a submit event. If Transcar's widget emits
+  // a submission message from its own origin (matching its 'transcar-widget-*'
+  // convention) we forward it once; otherwise this stays dormant.
+  var submitted=false;
+  window.addEventListener('message',function(e){
+    if(e.origin!==WIDGET_ORIGIN) return;
+    var d=e.data; if(!d || typeof d!=='object') return;
+    var t=String(d.type||d.event||'');
+    if(/^transcar-widget-(submit|submitted|success|complete|completed|lead|conversion|thank)/i.test(t)){
+      if(submitted) return; submitted=true;
+      push('transcar_quote_submit');
+    }
+  });
+
+  if(document.readyState!=='loading') wire();
+  else document.addEventListener('DOMContentLoaded',wire);
+  window.addEventListener('load',wire);
 })();
 </script>
 </body></html>
